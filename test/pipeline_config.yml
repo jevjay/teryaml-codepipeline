@@ -1,0 +1,253 @@
+pipeline:
+- name: deploy
+  trigger: branch
+  deployment_branch: master
+  sources:
+  - name: Source
+    actions:
+      - name: Repo
+        owner: AWS
+        provider: CodeCommit
+        version: "1"
+        repository_name: test-repo
+        deployment_branch: master
+        output_artifacts:
+          - source_out_artifacts          
+  stages:
+  - name: Build
+    order: 1
+    actions:
+      - name: app-build
+        category: Build
+        owner: AWS
+        provider: CodeBuild
+        run_order: 1
+        version: "1"
+        input_artifacts: 
+          - source_out_artifacts
+        output_artifacts: 
+          - app_build_out_artifacts
+        job_build_compute_type: BUILD_GENERAL1_SMALL
+        vpc_id: vpc-cda9c4b4
+        vpc_subnets:
+          - subnet-a48e5cdd
+          - subnet-8039c4cb
+          - subnet-0c62db56
+        buildspec_file: .buildspec/build.yml
+        job_build_timeout: "60"
+        job_build_image: aws/codebuild/standard:3.0
+        enable_cache: false
+      - name: docker-build
+        category: Build
+        owner: AWS
+        provider: CodeBuild
+        version: "1"
+        run_order: 2
+        input_artifacts:
+          - source_out_artifacts
+        output_artifacts: 
+          - docker_build_out_artifacts
+        job_build_compute_type: BUILD_GENERAL1_SMALL
+        vpc_id: vpc-cda9c4b4
+        vpc_subnets:
+          - subnet-a48e5cdd
+          - subnet-8039c4cb
+          - subnet-0c62db56
+        buildspec_file: .buildspec/docker_build.yml
+        job_build_timeout: "60"
+        job_build_image: aws/codebuild/standard:3.0
+      - name: helm-publish
+        category: Build
+        owner: AWS
+        provider: CodeBuild
+        version: "1"
+        run_order: 2
+        input_artifacts:
+          - source_out_artifacts
+        output_artifacts: 
+          - helm_publish_out_artifacts
+        job_build_compute_type: BUILD_GENERAL1_SMALL
+        vpc_id: vpc-cda9c4b4
+        vpc_subnets:
+          - subnet-a48e5cdd
+          - subnet-8039c4cb
+          - subnet-0c62db56
+        buildspec_file: .buildspec/helm_publish.yml
+        job_build_timeout: "60"
+        job_build_image: aws/codebuild/standard:3.0
+  - name: Tests
+    order: 2
+    actions:
+      - name: sonarqube-scan
+        category: Build
+        owner: AWS
+        provider: CodeBuild
+        version: "1"
+        run_order: 1
+        input_artifacts:
+          - source_out_artifacts
+        output_artifacts:
+          - sonarqube_scan_out_artifacts
+        job_build_compute_type: BUILD_GENERAL1_SMALL
+        vpc_id: vpc-cda9c4b4
+        vpc_subnets:
+          - subnet-a48e5cdd
+          - subnet-8039c4cb
+          - subnet-0c62db56
+        buildspec_file: .buildspec/sonarqube_scan.yml
+        job_build_timeout: "60"
+        job_build_image: aws/codebuild/standard:3.0
+      - name: app-test
+        category: Build
+        owner: AWS
+        provider: CodeBuild
+        version: "1"
+        run_order: 1
+        input_artifacts:
+          - source_out_artifacts
+        output_artifacts:
+          - app_test_out_artifacts
+        job_build_compute_type: BUILD_GENERAL1_SMALL
+        vpc_id: vpc-cda9c4b4
+        vpc_subnets:
+          - subnet-a48e5cdd
+          - subnet-8039c4cb
+          - subnet-0c62db56
+        buildspec_file: .buildspec/test.yml
+        job_build_timeout: "60"
+        job_build_image: aws/codebuild/standard:3.0      
+  - name: ApproveDeployToTest
+    order: 3
+    actions:
+      - name: approve-test
+        category: Approval
+        owner: AWS
+        provider: Manual
+        version: "1"
+  - name: DeployToTest
+    order: 4
+    actions:
+      - name: deploy-test
+        category: Build
+        owner: AWS
+        provider: CodeBuild
+        version: "1"
+        run_order: 1
+        input_artifacts:
+          - source_out_artifacts
+        output_artifacts:
+          - deploy_test_artifacts
+        job_build_compute_type: BUILD_GENERAL1_SMALL
+        vpc_id: vpc-cda9c4b4
+        vpc_subnets:
+          - subnet-a48e5cdd
+          - subnet-8039c4cb
+          - subnet-0c62db56
+        buildspec_file: .buildspec/deploy_test.yml
+        job_build_timeout: "60"
+        job_build_image: aws/codebuild/standard:3.0
+  - name: ApproveDeployToProd
+    order: 5
+    actions:
+      - name: approve-prod
+        category: Approval
+        owner: AWS
+        provider: Manual
+        version: "1"
+  - name: DeployToProd
+    order: 6
+    actions:
+      - name: deploy-prod
+        category: Build
+        owner: AWS
+        provider: CodeBuild
+        version: "1"
+        run_order: 1
+        input_artifacts:
+          - source_out_artifacts
+        output_artifacts:
+          - deploy_prod_artifacts
+        job_build_compute_type: BUILD_GENERAL1_SMALL
+        vpc_id: vpc-cda9c4b4
+        vpc_subnets:
+          - subnet-a48e5cdd
+          - subnet-8039c4cb
+          - subnet-0c62db56
+        buildspec_file: .buildspec/deploy_prod.yml
+        job_build_timeout: "60"
+        job_build_image: aws/codebuild/standard:3.0
+- name: pre-deploy
+  trigger: branch
+  deployment_branch: master
+  sources:
+  - name: Source
+    actions:
+      - name: Repo
+        owner: AWS
+        provider: CodeCommit
+        version: "1"
+        repository_name: test-repo
+        deployment_branch: develop
+        output_artifacts:
+          - source_out_artifacts
+  stages:
+  - name: Build
+    order: 1
+    actions:
+    - name: app-build
+      category: Build
+      owner: AWS
+      provider: CodeBuild
+      run_order: 1
+      version: "1"
+      input_artifacts: 
+        - test_out_artifacts
+      output_artifacts: 
+        - app_build_out_artifacts
+      job_build_compute_type: BUILD_GENERAL1_SMALL
+      vpc_id: vpc-cda9c4b4
+      vpc_subnets:
+        - subnet-a48e5cdd
+        - subnet-8039c4cb
+        - subnet-0c62db56
+      buildspec_file: .buildspec/build.yml
+      job_build_timeout: "60"
+      job_build_image: aws/codebuild/standard:3.0
+      enable_cache: false
+    - name: lambda-action
+      category: Invoke
+      owner: AWS
+      provider: Lambda
+      version: "1"
+      run_order: 2
+      input_artifacts:
+        - source_out_artifacts
+      output_artifacts: 
+        - lambda_action_out_artifacts
+      function_name: "lambda-function"
+      user_params: '{ 
+        "S3ObjectKey":"${artifact_name}.zip" 
+      }'
+  - name: DeployToTest
+    order: 2
+    actions:
+      - name: deploy-test
+        category: Build
+        owner: AWS
+        provider: CodeBuild
+        version: "1"
+        run_order: 1
+        input_artifacts:
+          - test_out_artifacts
+        output_artifacts:
+          - deploy_test_artifacts
+        job_build_compute_type: BUILD_GENERAL1_SMALL
+        vpc_id: vpc-cda9c4b4
+        vpc_subnets:
+          - subnet-a48e5cdd
+          - subnet-8039c4cb
+          - subnet-0c62db56
+        buildspec_file: .buildspec/deploy_test.yml
+        job_build_timeout: "60"
+        job_build_image: aws/codebuild/standard:3.0
+  
