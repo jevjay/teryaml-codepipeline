@@ -1,0 +1,35 @@
+name: 'Terraform'
+
+on:
+  pull_request:
+
+jobs:
+  terraform:
+    name: 'Terraform'
+    runs-on: ubuntu-latest
+    environment: production
+
+    # Use the Bash shell regardless whether the GitHub Actions runner is ubuntu-latest, macos-latest, or windows-latest
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+    # Checkout the repository to the GitHub Actions runner
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    # Install Terraform CLI (via tfenv)
+    - name: Setup Terraform
+      env:
+        TFENV_URL: "https://github.com/tfutils/tfenv.git"
+        TF_VERSION: "0.14.10"
+      run: |
+        git clone "$TFENV_URL" ~/.tfenv
+        ln -s ~/.tfenv/bin/* /usr/local/bin
+        tfenv install "$TF_VERSION"
+        tfenv use "$TF_VERSION"
+
+    # Checks that all Terraform configuration files adhere to a canonical format
+    - name: Terraform Format
+      run: terraform fmt -check
