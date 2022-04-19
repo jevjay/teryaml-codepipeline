@@ -1,8 +1,7 @@
+![Terrabits logo](./img/terrabits-logo.png)
+
 # terraforest-codepipeline
 
-<p align="center">
-  <img width="198" height="141" src="./img/logo.png">
-</p>
 Terraform based configuration for AWS Codepipeline based CI/CD stack
 
 # Usage
@@ -11,7 +10,7 @@ Create a simple Codepipeline job integrated with AWS CodeCommit as a source
 
 ```hcl
 module "codecommit_job" {
-  source  = "git::https://github.com/jevjay/terraforest-codepipeline.git?ref=v0.0.1"
+  source  = "github.com/jevjay/terraforest-codepipeline"
 
   repository_name = "my-repository"
   repository_url  = "https://git-codecommit.us-east-2.amazonaws.com/v1/repos/my-repository"
