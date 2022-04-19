@@ -1,7 +1,13 @@
 pipeline:
 - name: deploy
-  trigger: branch
-  deployment_branch: master
+  trigger:
+    codecommit:
+      repository: test-repo
+      branch: master
+    cron:
+      expression: ""
+    eventbridge:
+      event_pattern: ""
   sources:
   - name: Source
     actions:

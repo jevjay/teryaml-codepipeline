@@ -28,8 +28,6 @@ jobs:
 
     # Install Terraform CLI (via tfenv)
     - name: Setup Terraform
-      env:
-        TF_VERSION: "0.14.10"
       run: |
         tfenv install "$TF_VERSION"
         tfenv use "$TF_VERSION"
