@@ -1,3 +1,9 @@
+storage:
+  shared_artifacts_bucket:
+    name: 
+  codebuild_cache_bucket:
+    name: 
+
 pipeline:
 - name: deploy
   trigger:

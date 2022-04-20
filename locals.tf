@@ -1,10 +1,28 @@
 locals {
-  // Default values
-  default_artifact_store    = "terraforest-codepipeline-artifact-store"
-  default_build_cache_store = "terraforest-codepipeline-cache-store"
+  # === STORAGE (artifacts, cache) ===
+
+  storage = try(yamldecode(file(var.config))["storage"], {})
+
+  shared_artifacts = try(flatten([
+    for i, storage in local.storage : [
+      for j, bucket in storage.shared_artifacts_bucket : {
+        name = bucket.name
+      }
+    ]
+  ]), {})
+
+  shared_cache = try(flatten([
+    for i, storage in local.storage : [
+      for j, bucket in storage.codebuild_cache_bucket: {
+        name = bucket.name
+      }
+    ]
+  ]))
 
   // Pipeline YAML config parser
-  config = try(yamldecode(file(var.pipeline_config))["config"], {})
+  config = try(yamldecode(file(var.config))["pipeline"], {})
+
+  # === TRIGGERS ===
 
   codecommit_triggers = try(flatten([
     for i, config in local.config : [
