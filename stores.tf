@@ -1,5 +1,5 @@
 resource "aws_s3_bucket" "artifact_store" {
-  for_each = try({ for i in local.shared_artifacts : i.name => i }, {})
+  for_each = try({ for i in local.shared_artifacts : i.pipeline_name => i }, {})
 
   bucket = each.value.name
 
@@ -7,7 +7,7 @@ resource "aws_s3_bucket" "artifact_store" {
 }
 
 resource "aws_s3_bucket" "build_cache_store" {
-  for_each = try({ for i in local.shared_cache : i.name => i}, {})
+  for_each = try({ for i in local.shared_cache : i.pipeline_name => i }, {})
 
   bucket = each.value.name
 

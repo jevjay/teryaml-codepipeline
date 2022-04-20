@@ -4,7 +4,6 @@
 # execution based on the tracked events
 
 data "aws_iam_policy_document" "event_assume" {
-  count = length(local.pipeline_config) > 0 ? 1 : 0
   statement {
     actions = [
       "sts:AssumeRole",
@@ -19,10 +18,10 @@ data "aws_iam_policy_document" "event_assume" {
 
 # Configure Cloudwatch event IAM role(s)
 resource "aws_iam_role" "event_role" {
-  for_each = try({ for p in local.pipeline_config : p.name => p }, {})
+  for_each = try({ for p in local.config : p.name => p }, {})
 
-  name               = "${var.repository_name}-${each.value.name}-pipeline"
-  assume_role_policy = data.aws_iam_policy_document.event_assume[0].json
+  name               = "terrabits-${each.value.name}"
+  assume_role_policy = data.aws_iam_policy_document.event_assume.json
 
   tags = local.common_tags
 }
@@ -40,7 +39,7 @@ resource "aws_iam_role_policy" "event_policy" {
         "codepipeline:StartPipelineExecution"
       ],
       "Effect": "Allow",
-      "Resource": "${aws_codepipeline.codepipeline[each.value.name].arn}"
+      "Resource": "${aws_codepipeline.pipeline[each.value.name].arn}"
     }
   ]
 }
@@ -91,7 +90,7 @@ resource "aws_cloudwatch_event_target" "branch_trigger" {
 
   rule     = aws_cloudwatch_event_rule.branch_trigger["${each.value.pipeline_name}-${each.value.type}"].name
   role_arn = aws_iam_role.event_role[each.value.pipeline_name].arn
-  arn      = aws_codepipeline.codepipeline[each.value.pipeline_name].arn
+  arn      = aws_codepipeline.pipeline[each.value.pipeline_name].arn
 }
 
 # === (Codecommit) TAG triggers ===
@@ -132,7 +131,7 @@ resource "aws_cloudwatch_event_target" "tag_trigger" {
 
   rule     = aws_cloudwatch_event_rule.tag_trigger["${each.value.pipeline_name}-${each.value.type}"].name
   role_arn = aws_iam_role.event_role[each.value.pipeline_name].arn
-  arn      = aws_codepipeline.codepipeline[each.value.pipeline_name].arn
+  arn      = aws_codepipeline.pipeline[each.value.pipeline_name].arn
 }
 
 #  === CRON triggers ===
@@ -152,7 +151,7 @@ resource "aws_cloudwatch_event_target" "cron_trigger" {
 
   rule     = aws_cloudwatch_event_rule.cron_trigger["${each.value.pipeline_name}-${each.value.type}"].name
   role_arn = aws_iam_role.event_role[each.value.pipeline_name].arn
-  arn      = aws_codepipeline.codepipeline[each.value.pipeline_name].arn
+  arn      = aws_codepipeline.pipeline[each.value.pipeline_name].arn
 }
 
 #  === EVENTBRIDGE triggers ===
@@ -173,5 +172,5 @@ resource "aws_cloudwatch_event_target" "eventbridge_trigger" {
 
   rule     = aws_cloudwatch_event_rule.eventbridge_trigger["${each.value.pipeline_name}-${each.value.type}"].name
   role_arn = aws_iam_role.event_role[each.value.pipeline_name].arn
-  arn      = aws_codepipeline.codepipeline[each.value.pipeline_name].arn
+  arn      = aws_codepipeline.pipeline[each.value.pipeline_name].arn
 }

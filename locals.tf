@@ -1,26 +1,6 @@
 locals {
-  # === STORAGE (artifacts, cache) ===
-
-  storage = try(yamldecode(file(var.config))["storage"], {})
-
-  shared_artifacts = try(flatten([
-    for i, storage in local.storage : [
-      for j, bucket in storage.shared_artifacts_bucket : {
-        name = bucket.name
-      }
-    ]
-  ]), {})
-
-  shared_cache = try(flatten([
-    for i, storage in local.storage : [
-      for j, bucket in storage.codebuild_cache_bucket: {
-        name = bucket.name
-      }
-    ]
-  ]))
-
   // Pipeline YAML config parser
-  config = try(yamldecode(file(var.config))["pipeline"], {})
+  config = try(yamldecode(file(var.config))["config"], {})
 
   # === TRIGGERS ===
 
@@ -63,21 +43,56 @@ locals {
     ]
   ]), {})
 
+  # === STORAGE (artifacts, cache) ===
 
-  sources_config = try(flatten([
+  shared_artifacts = try(flatten([
+    for i, config in local.config : {
+      pipeline_name = config.name
+      name          = lookup(config.artifact_bucket, "name", null)
+    }
+  ]), {})
+
+  shared_cache = try(flatten([
+    for i, config in local.config : {
+      pipeline_name = config.name
+      name          = lookup(config.cache_bucket, "name", null)
+    }
+  ]))
+
+  sources = try(flatten([
     for pk, config in local.config : [
-      for sk, source in config.sources : [
+      for sk, source in config.source : [
         for ak, action in source.actions : {
-          pipeline_name     = config.name
-          stage_name        = source.name
-          name              = action.name
-          owner             = action.owner
-          provider          = action.provider
-          version           = action.version
-          repository_name   = action.repository_name
-          deployment_branch = action.deployment_branch
-          output_artifacts  = lookup(action, "output_artifacts", "source_out_artifacts")
-          namespace         = lookup(action, "namespace", "SourceVariables")
+          pipeline_name    = config.name
+          stage_name       = source.name
+          name             = action.name
+          owner            = action.owner
+          provider         = action.provider
+          version          = lookup(action, "version", "1")
+          repository       = action.repository
+          branch           = action.branch
+          output_artifacts = action.output_artifacts
+          namespace        = lookup(action, "namespace", "SourceVariables")
+          poll_for_changes = lookup(action, "poll_for_changes", false)
+        }
+      ]
+    ]
+  ]), {})
+
+  additional_sources = try(flatten([
+    for pk, config in local.config : [
+      for sk, source in config.additional_sources : [
+        for ak, action in source.actions : {
+          pipeline_name    = config.name
+          stage_name       = source.name
+          name             = action.name
+          owner            = action.owner
+          provider         = action.provider
+          version          = lookup(action, "version", "1")
+          repository       = action.repository
+          branch           = action.branch
+          output_artifacts = action.output_artifacts
+          namespace        = lookup(action, "namespace", "SourceVariables")
         }
       ]
     ]
