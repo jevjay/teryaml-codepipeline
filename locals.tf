@@ -2,6 +2,15 @@ locals {
   // Pipeline YAML config parser
   config = try(yamldecode(file(var.config))["config"], {})
 
+  # === PIPELINE ===
+
+  pipeline = try(flatten([
+    for config in local.config : {
+      pipeline_name = config.name
+
+    }
+  ]), {})
+
   # === TRIGGERS ===
 
   codecommit_triggers = try(flatten([
@@ -93,6 +102,7 @@ locals {
           branch           = action.branch
           output_artifacts = action.output_artifacts
           namespace        = lookup(action, "namespace", "SourceVariables")
+          poll_for_changes = lookup(action, "poll_for_changes", false)
         }
       ]
     ]
@@ -113,29 +123,53 @@ locals {
     for pk, config in local.config : [
       for sk, stage in config.stages : [
         for ak, action in stage.actions : {
-          pipeline_name            = config.name
-          stage_name               = stage.name
-          name                     = action.name
-          category                 = action.category
-          owner                    = action.owner
-          provider                 = action.provider
-          version                  = action.version
-          run_order                = lookup(action, "run_order", 1)
-          input_artifacts          = lookup(action, "input_artifacts", [])
-          output_artifacts         = lookup(action, "output_artifacts", [])
-          job_build_compute_type   = lookup(action, "job_build_compute_type", "BUILD_GENERAL1_SMALL")
-          vpc_id                   = lookup(action, "vpc_id", "")
-          vpc_subnets              = lookup(action, "vpc_subnets", [])
-          vpc_security_groups      = lookup(action, "vpc_security_groups", [])
-          buildspec_file           = lookup(action, "buildspec_file", ".buildspec/pipeline.yml")
-          job_build_timeout        = lookup(action, "job_build_timeout", "10")
-          job_iam_role             = lookup(action, "job_iam_role", "")
-          job_build_image          = lookup(action, "job_build_image", "aws/codebuild/standard:3.0")
-          function_name            = lookup(action, "function_name", "")
-          user_params              = lookup(action, "user_params", "")
-          build_cache_store_bucket = lookup(action, "build_cache_store_bucket", "")
+          pipeline_name                     = config.name
+          stage_name                        = stage.name
+          name                              = action.name
+          description                       = lookup(action, "description", "")
+          category                          = action.category
+          owner                             = action.owner
+          provider                          = action.provider
+          version                           = action.version
+          run_order                         = lookup(action, "run_order", 1)
+          input_artifacts                   = lookup(action, "input_artifacts", [])
+          output_artifacts                  = lookup(action, "output_artifacts", [])
+          build_compute_type                = lookup(action, "build_compute_type", "BUILD_GENERAL1_SMALL")
+          build_certificate                 = lookup(action, "build_certificate", null)
+          build_image_pull_credentials_type = lookup(action, "build_image_pull_credentials_type", null)
+          build_image                       = lookup(action, "build_image", "aws/codebuild/standard:3.0")
+          build_timeout                     = lookup(action, "build_timeout", "10")
+          build_type                        = lookup(action, "build_type", "LINUX_CONTAINER")
+          build_privileged_mode             = lookup(action, "build_priviledged_mode", false)
+          badge_enabled                     = lookup(action, "badge_enabled", false)
+          concurrent_build_limit            = lookup(action, "concurent_build_limit", null)
+          git_clone_depth                   = lookup(action, "git_clone_depth", 1)
+          queued_timeout                    = lookup(action, "queued_timeout", "60")
+          cache_type                        = lookup(action, "cache_type", "NO_CACHE")
+          cache_modes                       = lookup(action, "cache_modes", null)
+          vpc_id                            = lookup(action, "vpc_id", "")
+          vpc_subnets                       = lookup(action, "vpc_subnets", [])
+          vpc_security_groups               = lookup(action, "vpc_security_groups", [])
+          buildspec_file                    = lookup(action, "buildspec_file", ".buildspec/pipeline.yml")
+          service_role                      = lookup(action, "service_role", "")
+          service_role_policy               = lookup(action, "service_role_policy", "")
+          function_name                     = lookup(action, "function_name", "")
+          user_params                       = lookup(action, "user_params", "")
+          build_cache_store_bucket          = lookup(action, "build_cache_store_bucket", "")
         }
       ]
+    ]
+  ]), {})
+
+  variables = try(flatten([
+    for config in local.config : [
+      for stage in config.stages : {
+        for v in lookup(stage.actions, "variables", []) : "${config.pipeline_name}-${stage.name}-${action.name}-${v.name}" => {
+          name  = lookup(action.variables, "name", null)
+          value = lookup(action.variables, "value", null)
+          type  = lookup(action.variables, "type", null)
+        }
+      }
     ]
   ]), {})
 

@@ -44,16 +44,19 @@ config:
           - source_out_artifacts
         output_artifacts: 
           - app_build_out_artifacts
-        job_build_compute_type: BUILD_GENERAL1_SMALL
+        build_compute_type: BUILD_GENERAL1_SMALL
+        build_timeout: "60"
+        build_image: aws/codebuild/standard:3.0
         vpc_id: vpc-cda9c4b4
         vpc_subnets:
           - subnet-a48e5cdd
           - subnet-8039c4cb
           - subnet-0c62db56
         buildspec_file: .buildspec/build.yml
-        job_build_timeout: "60"
-        job_build_image: aws/codebuild/standard:3.0
-        enable_cache: false
+        service_role: app-build
+        variables:
+        - name: APP_NAME
+          value: test
       - name: docker-build
         category: Build
         owner: AWS
@@ -73,6 +76,7 @@ config:
         buildspec_file: .buildspec/docker_build.yml
         job_build_timeout: "60"
         job_build_image: aws/codebuild/standard:3.0
+        service_role: docker-build
       - name: helm-publish
         category: Build
         owner: AWS
@@ -91,7 +95,8 @@ config:
           - subnet-0c62db56
         buildspec_file: .buildspec/helm_publish.yml
         job_build_timeout: "60"
-        job_build_image: aws/codebuild/standard:3.0     
+        job_build_image: aws/codebuild/standard:3.0  
+        service_role: helm-build   
   - name: ApproveDeploy
     order: 2
     actions:
@@ -122,3 +127,4 @@ config:
         buildspec_file: .buildspec/deploy_test.yml
         job_build_timeout: "60"
         job_build_image: aws/codebuild/standard:3.0
+        service_role: deploy-test

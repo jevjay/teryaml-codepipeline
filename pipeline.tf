@@ -49,14 +49,13 @@ resource "aws_codepipeline" "pipeline" {
         namespace        = action.value.namespace
 
         configuration = {
-          RepositoryName       = action.value.repository_name
-          BranchName           = action.value.deployment_branch
-          PollForSourceChanges = "false"
+          RepositoryName       = action.value.repository
+          BranchName           = action.value.branch
+          PollForSourceChanges = action.value.poll_for_changes
         }
       }
     }
   }
-
 
   dynamic "stage" {
     for_each = { for i, s in local.stages_config : "${s.order}-${s.pipeline_name}-${s.name}" => s if each.value.name == s.pipeline_name }
@@ -77,7 +76,7 @@ resource "aws_codepipeline" "pipeline" {
           run_order        = action.value.run_order
 
           configuration = {
-            ProjectName   = module.job["${action.value.pipeline_name}-${action.value.name}"].codebuild_job_name[0]
+            ProjectName   = module.job["${action.value.pipeline_name}-${action.value.stage_name}-${action.value.name}"].codebuild_project_name[0]
             PrimarySource = action.value.input_artifacts[0]
             EnvironmentVariables = jsonencode([
               {
@@ -142,25 +141,29 @@ resource "aws_codepipeline" "pipeline" {
   }
 
   tags = local.common_tags
+
+  depends_on = [
+    module.job,
+  ]
 }
 
 // CodeBuild resources configuration
 module "job" {
   source = "git@github.com:jevjay/terrabits-codebuild.git"
 
-  for_each = try({ for a in local.actions_config : "${a.pipeline_name}-${a.name}" => a if a.category == "Build" }, {})
+  for_each = try({ for a in local.actions_config : "${a.pipeline_name}-${a.stage_name}-${a.name}" => a if a.category == "Build" }, {})
 
-  config = yamlencode({
+  raw_config = yamlencode({
     config : [
       {
         name : each.key,
         description : each.value.description,
-        build_timeout : each.value.job_build_timeout,
+        build_timeout : each.value.build_timeout,
         badge_enabled : each.value.badge_enabled,
         concurrent_build_limit : each.value.concurrent_build_limit,
         queued_timeout : each.value.queued_timeout,
         service_role : {
-          name : "terrabits-${each.key}",
+          name : each.value.service_role,
           policy : each.value.service_role_policy,
         },
         source : {
@@ -183,7 +186,7 @@ module "job" {
           certificate : each.value.build_certificate,
           image_pull_credentials_type : each.value.build_image_pull_credentials_type,
           privileged_mode : each.value.build_privileged_mode,
-          variables : each.value.build_variables
+          variables : lookup(local.variables, each.key, {})
         },
         vpc : {
           id : each.value.vpc_id,
