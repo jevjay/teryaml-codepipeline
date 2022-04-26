@@ -1,3 +1,10 @@
+resource "aws_codestarconnections_connection" "pipeline" {
+  for_each = { for i in local.sources : "${i.pipeline_name}-${i.stage_name}-${i.name}" => i if contains(local.codestarconnection_providers, i.provider) }
+
+  name          = each.key
+  provider_type = each.value.provider
+}
+
 # CodePipeline resources configuration
 resource "aws_codepipeline" "pipeline" {
   for_each = try({ for p in local.config : p.name => p }, {})
@@ -11,47 +18,94 @@ resource "aws_codepipeline" "pipeline" {
     type     = "S3"
   }
 
+  # === SOURCES ===
+
   stage {
-    name = "Source"
+    name = "Sources"
 
-    # Main pipeline source
+    # Codecommit source
     dynamic "action" {
-      for_each = { for i in local.sources : i.name => i }
+      for_each = { for i in local.sources : "${i.pipeline_name}-${i.stage_name}-${i.name}" => i if i.provider == "CodeCommit" }
 
       content {
         name             = action.value.name
         category         = "Source"
-        owner            = action.value.owner
-        provider         = action.value.provider
-        output_artifacts = action.output_artifacts
-        version          = action.value.version
-        namespace        = action.value.namespace
-
-        configuration = {
-          RepositoryName       = action.value.repository
-          BranchName           = action.value.branch
-          PollForSourceChanges = action.value.poll_for_changes
-        }
-      }
-    }
-
-    # Additional sources configuration
-    dynamic "action" {
-      for_each = { for s in local.additional_sources : s.name => s if each.value.name == s.pipeline_name }
-
-      content {
-        name             = action.value.name
-        category         = "Source"
-        owner            = action.value.owner
+        owner            = "AWS"
         provider         = action.value.provider
         output_artifacts = action.value.output_artifacts
         version          = action.value.version
         namespace        = action.value.namespace
+        run_order        = action.value.run_order
 
         configuration = {
           RepositoryName       = action.value.repository
           BranchName           = action.value.branch
-          PollForSourceChanges = action.value.poll_for_changes
+          PollForSourceChanges = action.value.poll
+          OutputArtifactFormat = action.value.output_artifacts_format
+        }
+      }
+    }
+
+    dynamic "action" {
+      for_each = { for i in local.sources : "${i.pipeline_name}-${i.stage_name}-${i.name}" => i if i.provider == "S3" }
+
+      content {
+        name             = action.value.name
+        category         = "Source"
+        owner            = "AWS"
+        provider         = action.value.provider
+        output_artifacts = action.value.output_artifacts
+        version          = action.value.version
+        namespace        = action.value.namespace
+        run_order        = action.value.run_order
+
+        configuration = {
+          S3Bucket             = action.value.bucket
+          S3ObjectKey          = action.value.object_key
+          PollForSourceChanges = action.value.poll
+        }
+      }
+    }
+
+    dynamic "action" {
+      for_each = { for i in local.sources : "${i.pipeline_name}-${i.stage_name}-${i.name}" => i if i.provider == "ECR" }
+
+      content {
+        name             = action.value.name
+        category         = "Source"
+        owner            = "AWS"
+        provider         = action.value.provider
+        output_artifacts = action.value.output_artifacts
+        version          = action.value.version
+        namespace        = action.value.namespace
+        run_order        = action.value.run_order
+
+        configuration = {
+          ImageTag       = action.value.image_tag
+          RepositoryName = action.value.repository
+        }
+      }
+    }
+
+    dynamic "action" {
+      for_each = { for i in local.sources : "${i.pipeline_name}-${i.stage_name}-${i.name}" => i if contains(local.codestarconnection_providers, i.provider) }
+
+      content {
+        name             = action.value.name
+        category         = "Source"
+        owner            = "AWS"
+        provider         = "CodeStarSourceConnection"
+        output_artifacts = action.value.output_artifacts
+        version          = action.value.version
+        namespace        = action.value.namespace
+        run_order        = action.value.run_order
+
+        configuration = {
+          ConnectionArn        = aws_codestarconnections_connection.pipeline["${action.value.pipeline_name}-${action.value.stage_name}-${action.value.name}"].arn
+          FullRepositoryId     = action.value.repository
+          BranchName           = action.value.branch
+          DetectChanges        = action.value.poll
+          OutputArtifactFormat = action.value.output_artifacts_format
         }
       }
     }
@@ -59,6 +113,7 @@ resource "aws_codepipeline" "pipeline" {
 
   dynamic "stage" {
     for_each = { for i, s in local.stages_config : "${s.order}-${s.pipeline_name}-${s.name}" => s if each.value.name == s.pipeline_name }
+
     content {
       name = stage.value.name
       dynamic "action" {

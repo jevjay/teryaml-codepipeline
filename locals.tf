@@ -66,47 +66,31 @@ locals {
       pipeline_name = config.name
       name          = lookup(config.cache_bucket, "name", null)
     }
-  ]))
-
-  sources = try(flatten([
-    for pk, config in local.config : [
-      for sk, source in config.source : [
-        for ak, action in source.actions : {
-          pipeline_name    = config.name
-          stage_name       = source.name
-          name             = action.name
-          owner            = action.owner
-          provider         = action.provider
-          version          = lookup(action, "version", "1")
-          repository       = action.repository
-          branch           = action.branch
-          output_artifacts = action.output_artifacts
-          namespace        = lookup(action, "namespace", "SourceVariables")
-          poll_for_changes = lookup(action, "poll_for_changes", false)
-        }
-      ]
-    ]
   ]), {})
 
-  additional_sources = try(flatten([
-    for pk, config in local.config : [
-      for sk, source in config.additional_sources : [
-        for ak, action in source.actions : {
+  sources = flatten([
+    for config in local.config : [
+      for action in lookup(config.sources, "actions", []) : {
+          # Required
           pipeline_name    = config.name
-          stage_name       = source.name
+          stage_name       = "Sources"
           name             = action.name
-          owner            = action.owner
           provider         = action.provider
-          version          = lookup(action, "version", "1")
-          repository       = action.repository
-          branch           = action.branch
-          output_artifacts = action.output_artifacts
-          namespace        = lookup(action, "namespace", "SourceVariables")
-          poll_for_changes = lookup(action, "poll_for_changes", false)
+          output_artifacts = lookup(action, "output_artifacts", null)
+          # Optional
+          bucket                  = lookup(action, "bucket", null)
+          object_key              = lookup(action, "object_key", null)
+          version                 = lookup(action, "version", "1")
+          repository              = lookup(action, "repository", null)
+          branch                  = lookup(action, "branch", "main")
+          image_tag               = lookup(action, "image_tag", null)
+          namespace               = lookup(action, "namespace", "SourceVariables")
+          poll                    = lookup(action, "poll", false)
+          output_artifacts_format = lookup(action, "output_artifacts_format", "CODE_ZIP")
+          run_order               = lookup(action, "run_order", 1)
         }
-      ]
     ]
-  ]), {})
+  ])
 
   stages_config = try(flatten([
     for pk, config in local.config : [
@@ -164,14 +148,20 @@ locals {
   variables = try(flatten([
     for config in local.config : [
       for stage in config.stages : {
-        for v in lookup(stage.actions, "variables", []) : "${config.pipeline_name}-${stage.name}-${action.name}-${v.name}" => {
-          name  = lookup(action.variables, "name", null)
-          value = lookup(action.variables, "value", null)
-          type  = lookup(action.variables, "type", null)
+        for i in lookup(stage.actions, "variables", []) : "${config.pipeline_name}-${stage.name}-${i.name}" => {
+          name  = lookup(i.variables, "name", null)
+          value = lookup(i.variables, "value", null)
+          type  = lookup(i.variables, "type", null)
         }
       }
     ]
   ]), {})
+
+  codestarconnection_providers = [
+    "Bitbucket",
+    "GitHub",
+    "GitHubEnterpriseServer",
+  ]
 
   common_tags = merge(var.shared_tags, { Terraformed = true })
 }

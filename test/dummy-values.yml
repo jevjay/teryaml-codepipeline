@@ -12,24 +12,38 @@ config:
     name: "terrabits-codepipeline-artifacts"
   cache_bucket:
     name: "terrabits-codepipeline-cache"
-  source:
-    name: test-repo-source
-    provider: CodeCommit
-    owner: AWS
-    repository: test-repo
-    branch: main
-    poll_for_changes: false
-  additional_sources:
-  - name: Source
+  sources:
     actions:
-      - name: Repo
-        owner: AWS
+      - name: codecommit-repo
         provider: CodeCommit
-        version: "1"
         repository: test-repo
-        branch: master
+        branch: main
+        poll: true
         output_artifacts:
-          - source_out_artifacts          
+          - codecommit-repo 
+      - name: github
+        provider: GitHub
+        repository: github-repo
+        branch: main
+        output_artifacts:
+          - github-repo
+      - name: bitbucket
+        provider: Bitbucket
+        repository: bitbucket-repo
+        branch: main
+        output_artifacts:
+          - bitbucket-repo    
+      - name: github-enterprise
+        provider: GitHubEnterpriseServer
+        repository: github-enterprise-repo
+        branch: main
+        output_artifacts:
+          - github-enterprise-repo
+      - name: s3-bucket
+        provider: s3
+        bucket: unique-bucket-name
+        object_key: "path/to/object"
+        poll: true      
   stages:
   - name: Build
     order: 1
