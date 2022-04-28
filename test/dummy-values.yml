@@ -1,5 +1,5 @@
 config:
-- name: deploy
+- name: dummy
   trigger:
     codecommit:
       repository: test-repo
@@ -45,15 +45,12 @@ config:
         object_key: "path/to/object"
         poll: true      
   stages:
-  - name: Build
+  - name: compile
     order: 1
     actions:
       - name: app-build
-        category: Build
-        owner: AWS
         provider: CodeBuild
         run_order: 1
-        version: "1"
         input_artifacts: 
           - source_out_artifacts
         output_artifacts: 
@@ -61,84 +58,30 @@ config:
         build_compute_type: BUILD_GENERAL1_SMALL
         build_timeout: "60"
         build_image: aws/codebuild/standard:3.0
-        vpc_id: vpc-cda9c4b4
-        vpc_subnets:
-          - subnet-a48e5cdd
-          - subnet-8039c4cb
-          - subnet-0c62db56
         buildspec_file: .buildspec/build.yml
-        service_role: app-build
-        variables:
-        - name: APP_NAME
-          value: test
-      - name: docker-build
-        category: Build
-        owner: AWS
-        provider: CodeBuild
-        version: "1"
-        run_order: 2
-        input_artifacts:
-          - source_out_artifacts
-        output_artifacts: 
-          - docker_build_out_artifacts
-        job_build_compute_type: BUILD_GENERAL1_SMALL
-        vpc_id: vpc-cda9c4b4
-        vpc_subnets:
-          - subnet-a48e5cdd
-          - subnet-8039c4cb
-          - subnet-0c62db56
-        buildspec_file: .buildspec/docker_build.yml
-        job_build_timeout: "60"
-        job_build_image: aws/codebuild/standard:3.0
-        service_role: docker-build
-      - name: helm-publish
-        category: Build
-        owner: AWS
-        provider: CodeBuild
-        version: "1"
-        run_order: 2
-        input_artifacts:
-          - source_out_artifacts
-        output_artifacts: 
-          - helm_publish_out_artifacts
-        job_build_compute_type: BUILD_GENERAL1_SMALL
-        vpc_id: vpc-cda9c4b4
-        vpc_subnets:
-          - subnet-a48e5cdd
-          - subnet-8039c4cb
-          - subnet-0c62db56
-        buildspec_file: .buildspec/helm_publish.yml
-        job_build_timeout: "60"
-        job_build_image: aws/codebuild/standard:3.0  
-        service_role: helm-build   
-  - name: ApproveDeploy
+        service_role: app-build   
+  - name: approve
     order: 2
     actions:
       - name: approve-test
-        category: Approval
-        owner: AWS
         provider: Manual
-        version: "1"
-  - name: DeployToTest
+  - name: testing-deployment
     order: 3
     actions:
-      - name: deploy-test
-        category: Build
-        owner: AWS
+      - name: kubernetes
         provider: CodeBuild
-        version: "1"
         run_order: 1
         input_artifacts:
           - source_out_artifacts
         output_artifacts:
-          - deploy_test_artifacts
+          - deploy_artifacts
         job_build_compute_type: BUILD_GENERAL1_SMALL
-        vpc_id: vpc-cda9c4b4
-        vpc_subnets:
-          - subnet-a48e5cdd
-          - subnet-8039c4cb
-          - subnet-0c62db56
-        buildspec_file: .buildspec/deploy_test.yml
+        buildspec_file: .buildspec/deploy.yml
         job_build_timeout: "60"
         job_build_image: aws/codebuild/standard:3.0
-        service_role: deploy-test
+        service_role: deploy-kubernetes
+        variables:
+        - name: APP_NAME
+          value: test
+        - name: CONTEXT
+          value: kubernetes-context

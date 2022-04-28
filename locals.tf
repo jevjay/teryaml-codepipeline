@@ -71,24 +71,25 @@ locals {
   sources = flatten([
     for config in local.config : [
       for action in lookup(config.sources, "actions", []) : {
-          # Required
-          pipeline_name    = config.name
-          stage_name       = "Sources"
-          name             = action.name
-          provider         = action.provider
-          output_artifacts = lookup(action, "output_artifacts", null)
-          # Optional
-          bucket                  = lookup(action, "bucket", null)
-          object_key              = lookup(action, "object_key", null)
-          version                 = lookup(action, "version", "1")
-          repository              = lookup(action, "repository", null)
-          branch                  = lookup(action, "branch", "main")
-          image_tag               = lookup(action, "image_tag", null)
-          namespace               = lookup(action, "namespace", "SourceVariables")
-          poll                    = lookup(action, "poll", false)
-          output_artifacts_format = lookup(action, "output_artifacts_format", "CODE_ZIP")
-          run_order               = lookup(action, "run_order", 1)
-        }
+        # Required
+        pipeline_name    = config.name
+        stage_name       = "Sources"
+        name             = action.name
+        provider         = action.provider
+        output_artifacts = lookup(action, "output_artifacts", null)
+        # Optional
+        bucket                  = lookup(action, "bucket", null)
+        object_key              = lookup(action, "object_key", null)
+        version                 = lookup(action, "version", "1")
+        repository              = lookup(action, "repository", null)
+        branch                  = lookup(action, "branch", "main")
+        image_tag               = lookup(action, "image_tag", null)
+        namespace               = lookup(action, "namespace", "SourceVariables")
+        poll                    = lookup(action, "poll", false)
+        output_artifacts_format = lookup(action, "output_artifacts_format", "CODE_ZIP")
+        run_order               = lookup(action, "run_order", 1)
+        owner                   = lookup(action, "owner", "AWS")
+      }
     ]
   ])
 
@@ -110,11 +111,11 @@ locals {
           pipeline_name                     = config.name
           stage_name                        = stage.name
           name                              = action.name
-          description                       = lookup(action, "description", "")
-          category                          = action.category
-          owner                             = action.owner
+          category                          = lookup(local.categories, action.provider, null)
           provider                          = action.provider
-          version                           = action.version
+          version                           = lookup(action, "version", "1")
+          description                       = lookup(action, "description", "")
+          owner                             = lookup(local.owners, action.provider, "AWS")
           run_order                         = lookup(action, "run_order", 1)
           input_artifacts                   = lookup(action, "input_artifacts", [])
           output_artifacts                  = lookup(action, "output_artifacts", [])
@@ -140,28 +141,53 @@ locals {
           function_name                     = lookup(action, "function_name", "")
           user_params                       = lookup(action, "user_params", "")
           build_cache_store_bucket          = lookup(action, "build_cache_store_bucket", "")
+          variables = [
+            for variable in local.variables : {
+              name  = variable.name
+              value = variable.value
+              type  = variable.type
+          } if variable.pipeline_name == config.name && variable.stage_name == stage.name && variable.action_name == action.name]
         }
       ]
     ]
   ]), {})
 
-  variables = try(flatten([
+  variables = flatten([
     for config in local.config : [
-      for stage in config.stages : {
-        for i in lookup(stage.actions, "variables", []) : "${config.pipeline_name}-${stage.name}-${i.name}" => {
-          name  = lookup(i.variables, "name", null)
-          value = lookup(i.variables, "value", null)
-          type  = lookup(i.variables, "type", null)
-        }
-      }
+      for stage in config.stages : [
+        for action in stage.actions : [
+          for i in lookup(action, "variables", []) : {
+            pipeline_name = config.name
+            stage_name    = stage.name
+            action_name   = action.name
+            name          = i.name
+            value         = i.value
+            type          = try(i.type, "PLAINTEXT")
+          }
+        ]
+      ]
     ]
-  ]), {})
+  ])
 
   codestarconnection_providers = [
     "Bitbucket",
     "GitHub",
     "GitHubEnterpriseServer",
   ]
+
+  owners = {
+    "CodeBuild"  = "AWS"
+    "Lambda"     = "AWS"
+    "CodeDeploy" = "AWS"
+    "Manual"     = "AWS"
+  }
+
+  categories = {
+    "CodeBuild"  = "Build"
+    "Lambda"     = "Invoke"
+    "CodeDeploy" = "Deploy"
+    "Manual"     = "Approval"
+  }
 
   common_tags = merge(var.shared_tags, { Terraformed = true })
 }

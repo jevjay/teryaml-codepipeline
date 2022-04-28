@@ -52,7 +52,7 @@ resource "aws_codepipeline" "pipeline" {
       content {
         name             = action.value.name
         category         = "Source"
-        owner            = "AWS"
+        owner            = action.value.owner
         provider         = action.value.provider
         output_artifacts = action.value.output_artifacts
         version          = action.value.version
@@ -241,7 +241,7 @@ module "job" {
           certificate : each.value.build_certificate,
           image_pull_credentials_type : each.value.build_image_pull_credentials_type,
           privileged_mode : each.value.build_privileged_mode,
-          variables : lookup(local.variables, each.key, {})
+          variables : each.value.variables
         },
         vpc : {
           id : each.value.vpc_id,
