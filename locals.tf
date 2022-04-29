@@ -108,17 +108,30 @@ locals {
     for pk, config in local.config : [
       for sk, stage in config.stages : [
         for ak, action in stage.actions : {
-          pipeline_name                     = config.name
-          stage_name                        = stage.name
-          name                              = action.name
-          category                          = lookup(local.categories, action.provider, null)
-          provider                          = action.provider
-          version                           = lookup(action, "version", "1")
-          description                       = lookup(action, "description", "")
-          owner                             = lookup(local.owners, action.provider, "AWS")
-          run_order                         = lookup(action, "run_order", 1)
-          input_artifacts                   = lookup(action, "input_artifacts", [])
-          output_artifacts                  = lookup(action, "output_artifacts", [])
+          # Shared
+          pipeline_name       = config.name
+          stage_name          = stage.name
+          name                = action.name
+          category            = lookup(local.categories, action.provider, null)
+          owner               = lookup(local.owners, action.provider, null)
+          provider            = action.provider
+          description         = lookup(action, "description", "")
+          version             = lookup(action, "version", "1")
+          run_order           = lookup(action, "run_order", 1)
+          input_artifacts     = lookup(action, "input_artifacts", [])
+          output_artifacts    = lookup(action, "output_artifacts", [])
+          service_role        = lookup(action, "service_role", "")
+          service_role_policy = lookup(action, "service_role_policy", "")
+          vpc_subnets         = lookup(action, "vpc_subnets", [])
+          vpc_security_groups = lookup(action, "vpc_security_groups", [])
+          variables = [
+            for variable in local.variables : {
+              name  = variable.name
+              value = variable.value
+              type  = variable.type
+          } if variable.pipeline_name == config.name && variable.stage_name == stage.name && variable.action_name == action.name]
+
+          # CodeBuild variables
           build_compute_type                = lookup(action, "build_compute_type", "BUILD_GENERAL1_SMALL")
           build_certificate                 = lookup(action, "build_certificate", null)
           build_image_pull_credentials_type = lookup(action, "build_image_pull_credentials_type", null)
@@ -133,20 +146,18 @@ locals {
           cache_type                        = lookup(action, "cache_type", "NO_CACHE")
           cache_modes                       = lookup(action, "cache_modes", null)
           vpc_id                            = lookup(action, "vpc_id", "")
-          vpc_subnets                       = lookup(action, "vpc_subnets", [])
-          vpc_security_groups               = lookup(action, "vpc_security_groups", [])
           buildspec_file                    = lookup(action, "buildspec_file", ".buildspec/pipeline.yml")
-          service_role                      = lookup(action, "service_role", "")
-          service_role_policy               = lookup(action, "service_role_policy", "")
-          function_name                     = lookup(action, "function_name", "")
-          user_params                       = lookup(action, "user_params", "")
           build_cache_store_bucket          = lookup(action, "build_cache_store_bucket", "")
-          variables = [
-            for variable in local.variables : {
-              name  = variable.name
-              value = variable.value
-              type  = variable.type
-          } if variable.pipeline_name == config.name && variable.stage_name == stage.name && variable.action_name == action.name]
+
+          # Lambda variables
+          handler                 = lookup(action, "handler", null)
+          runtime                 = lookup(action, "runtime", null)
+          source                  = lookup(action, "source", null)
+          architectures           = lookup(action, "architectures", ["x86_64"])
+          code_signing_config_arn = lookup(action, "code_signing_config_arn", null)
+          memory                  = lookup(action, "memory", 128)
+          timeout                 = lookup(action, "timeout", 3)
+          user_params             = lookup(action, "user_params", "")
         }
       ]
     ]

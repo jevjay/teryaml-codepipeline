@@ -85,3 +85,10 @@ config:
           value: test
         - name: CONTEXT
           value: kubernetes-context
+      - name: slack-update
+        provider: Lambda
+        run_order: 2
+        handler: main
+        runtime: go1.x
+        source: test/hello.go
+        service_role: slack-update-lambda
