@@ -7,7 +7,6 @@ locals {
   pipeline = try(flatten([
     for config in local.config : {
       pipeline_name = config.name
-
     }
   ]), {})
 
@@ -70,25 +69,25 @@ locals {
 
   sources = flatten([
     for config in local.config : [
-      for action in lookup(config.sources, "actions", []) : {
+      for source in lookup(config, "sources", []) : {
         # Required
         pipeline_name    = config.name
         stage_name       = "Sources"
-        name             = action.name
-        provider         = action.provider
-        output_artifacts = lookup(action, "output_artifacts", null)
+        name             = source.name
+        provider         = source.provider
+        output_artifacts = lookup(source, "output_artifacts", null)
         # Optional
-        bucket                  = lookup(action, "bucket", null)
-        object_key              = lookup(action, "object_key", null)
-        version                 = lookup(action, "version", "1")
-        repository              = lookup(action, "repository", null)
-        branch                  = lookup(action, "branch", "main")
-        image_tag               = lookup(action, "image_tag", null)
-        namespace               = lookup(action, "namespace", "SourceVariables")
-        poll                    = lookup(action, "poll", false)
-        output_artifacts_format = lookup(action, "output_artifacts_format", "CODE_ZIP")
-        run_order               = lookup(action, "run_order", 1)
-        owner                   = lookup(action, "owner", "AWS")
+        bucket                  = lookup(source, "bucket", null)
+        object_key              = lookup(source, "object_key", null)
+        version                 = lookup(source, "version", "1")
+        repository              = lookup(source, "repository", null)
+        branch                  = lookup(source, "branch", "main")
+        image_tag               = lookup(source, "image_tag", null)
+        namespace               = lookup(source, "namespace", "SourceVariables")
+        poll                    = lookup(source, "poll", false)
+        output_artifacts_format = lookup(source, "output_artifacts_format", "CODE_ZIP")
+        run_order               = lookup(source, "run_order", 1)
+        owner                   = lookup(source, "owner", "AWS")
       }
     ]
   ])

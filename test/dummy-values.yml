@@ -13,37 +13,36 @@ config:
   cache_bucket:
     name: "terrabits-codepipeline-cache"
   sources:
-    actions:
-      - name: codecommit-repo
-        provider: CodeCommit
-        repository: test-repo
-        branch: main
-        poll: true
-        output_artifacts:
-          - codecommit-repo 
-      - name: github
-        provider: GitHub
-        repository: github-repo
-        branch: main
-        output_artifacts:
-          - github-repo
-      - name: bitbucket
-        provider: Bitbucket
-        repository: bitbucket-repo
-        branch: main
-        output_artifacts:
-          - bitbucket-repo    
-      - name: github-enterprise
-        provider: GitHubEnterpriseServer
-        repository: github-enterprise-repo
-        branch: main
-        output_artifacts:
-          - github-enterprise-repo
-      - name: s3-bucket
-        provider: s3
-        bucket: unique-bucket-name
-        object_key: "path/to/object"
-        poll: true      
+    - name: codecommit-repo
+      provider: CodeCommit
+      repository: test-repo
+      branch: main
+      poll: true
+      output_artifacts:
+        - codecommit-repo 
+    - name: github
+      provider: GitHub
+      repository: github-repo
+      branch: main
+      output_artifacts:
+        - github-repo
+    - name: bitbucket
+      provider: Bitbucket
+      repository: bitbucket-repo
+      branch: main
+      output_artifacts:
+        - bitbucket-repo    
+    - name: github-enterprise
+      provider: GitHubEnterpriseServer
+      repository: github-enterprise-repo
+      branch: main
+      output_artifacts:
+        - github-enterprise-repo
+    - name: s3-bucket
+      provider: s3
+      bucket: unique-bucket-name
+      object_key: "path/to/object"
+      poll: true      
   stages:
   - name: compile
     order: 1
@@ -75,10 +74,10 @@ config:
           - source_out_artifacts
         output_artifacts:
           - deploy_artifacts
-        job_build_compute_type: BUILD_GENERAL1_SMALL
+        build_compute_type: BUILD_GENERAL1_SMALL
         buildspec_file: .buildspec/deploy.yml
-        job_build_timeout: "60"
-        job_build_image: aws/codebuild/standard:3.0
+        build_timeout: "60"
+        build_image: aws/codebuild/standard:3.0
         service_role: deploy-kubernetes
         variables:
         - name: APP_NAME
