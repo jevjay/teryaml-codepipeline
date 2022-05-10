@@ -1,4 +1,8 @@
-name: 'Terraform'
+name: 'Tests'
+
+permissions:
+  id-token: write # required to use OIDC authentication
+  contents: read # required to checkout the code from the repo
 
 on:
   pull_request:
@@ -44,7 +48,7 @@ jobs:
     - name: Configure aws session
       uses: aws-actions/configure-aws-credentials@v1
       with:
-        role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT }}:role/terrabits-iam-access
+        role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT }}:role/terrabits-codepipeline-access
         role-duration-seconds: 900 # the ttl of the session, in seconds.
         aws-region: ${{ secrets.AWS_REGION }}
     
