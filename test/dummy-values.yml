@@ -1,0 +1,93 @@
+config:
+- name: dummy
+  trigger:
+    codecommit:
+      repository: test-repo
+      branch: master
+    cron:
+      expression: ""
+    eventbridge:
+      event_pattern: ""
+  artifact_bucket:
+    name: "terrabits-codepipeline-artifacts"
+  cache_bucket:
+    name: "terrabits-codepipeline-cache"
+  sources:
+    - name: codecommit-repo
+      provider: CodeCommit
+      repository: test-repo
+      branch: main
+      poll: true
+      output_artifacts:
+        - codecommit-repo 
+    - name: github
+      provider: GitHub
+      repository: github-repo
+      branch: main
+      output_artifacts:
+        - github-repo
+    - name: bitbucket
+      provider: Bitbucket
+      repository: bitbucket-repo
+      branch: main
+      output_artifacts:
+        - bitbucket-repo    
+    - name: github-enterprise
+      provider: GitHubEnterpriseServer
+      repository: github-enterprise-repo
+      branch: main
+      output_artifacts:
+        - github-enterprise-repo
+    - name: s3-bucket
+      provider: s3
+      bucket: unique-bucket-name
+      object_key: "path/to/object"
+      poll: true      
+  stages:
+  - name: compile
+    order: 1
+    actions:
+      - name: app-build
+        provider: CodeBuild
+        run_order: 1
+        input_artifacts: 
+          - source_out_artifacts
+        output_artifacts: 
+          - app_build_out_artifacts
+        build_compute_type: BUILD_GENERAL1_SMALL
+        build_timeout: "60"
+        build_image: aws/codebuild/standard:3.0
+        buildspec_file: .buildspec/build.yml
+        service_role: app-build   
+  - name: approve
+    order: 2
+    actions:
+      - name: approve-test
+        provider: Manual
+  - name: testing-deployment
+    order: 3
+    actions:
+      - name: kubernetes
+        provider: CodeBuild
+        run_order: 1
+        input_artifacts:
+          - source_out_artifacts
+        output_artifacts:
+          - deploy_artifacts
+        build_compute_type: BUILD_GENERAL1_SMALL
+        buildspec_file: .buildspec/deploy.yml
+        build_timeout: "60"
+        build_image: aws/codebuild/standard:3.0
+        service_role: deploy-kubernetes
+        variables:
+        - name: APP_NAME
+          value: test
+        - name: CONTEXT
+          value: kubernetes-context
+      - name: slack-update
+        provider: Lambda
+        run_order: 2
+        handler: main
+        runtime: go1.x
+        source: test/hello.go
+        service_role: slack-update-lambda

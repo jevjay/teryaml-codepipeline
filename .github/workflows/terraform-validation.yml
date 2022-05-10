@@ -1,4 +1,8 @@
-name: 'Terraform'
+name: 'Tests'
+
+permissions:
+  id-token: write # required to use OIDC authentication
+  contents: read # required to checkout the code from the repo
 
 on:
   pull_request:
@@ -28,8 +32,6 @@ jobs:
 
     # Install Terraform CLI (via tfenv)
     - name: Setup Terraform
-      env:
-        TF_VERSION: "0.14.10"
       run: |
         tfenv install "$TF_VERSION"
         tfenv use "$TF_VERSION"
@@ -37,3 +39,21 @@ jobs:
     # Checks that all Terraform configuration files adhere to a canonical format
     - name: Terraform Format
       run: terraform fmt -check
+
+    # Validate Terraform configuration
+    - name: Terraform init & validate
+      run: terraform init && terraform validate
+    
+    # Retrieve AWS session
+    - name: Configure aws session
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT }}:role/terrabits-codepipeline-access
+        role-duration-seconds: 900 # the ttl of the session, in seconds.
+        aws-region: ${{ secrets.AWS_REGION }}
+    
+    # Plan Terraform with dummy changes
+    - name: Plan Terraform with dummy values
+      env:
+        TF_VAR_config: "./test/dummy-values.yml"
+      run: terraform plan

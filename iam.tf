@@ -61,36 +61,3 @@ data "aws_iam_policy_document" "default_pipeline_policy" {
     resources = ["*"]
   }
 }
-
-# Default job role & policies 
-data "aws_iam_policy_document" "codebuild-assume-role-policy" {
-  statement {
-    actions = ["sts:AssumeRole"]
-
-    principals {
-      type        = "Service"
-      identifiers = ["codebuild.amazonaws.com"]
-    }
-  }
-}
-
-resource "aws_iam_role" "default_job" {
-  name               = "default_job_role"
-  path               = "/terraforest/"
-  assume_role_policy = data.aws_iam_policy_document.codebuild-assume-role-policy.json
-
-  inline_policy {
-    name   = "default_job_policy"
-    policy = data.aws_iam_policy_document.default_job_policy.json
-  }
-
-  tags = local.common_tags
-}
-
-data "aws_iam_policy_document" "default_job_policy" {
-  statement {
-    actions = ["*"]
-
-    resources = ["*"]
-  }
-}
