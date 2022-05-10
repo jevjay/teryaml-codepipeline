@@ -1,6 +1,6 @@
 // CodeBuild resources configuration
 module "codebuild_action" {
-  source = "github.com:jevjay/terrabits-codebuild"
+  source = "github.com/jevjay/terrabits-codebuild"
 
   for_each = try({ for a in local.actions_config : "${a.pipeline_name}-${a.stage_name}-${a.name}" => a if a.category == "Build" }, {})
 
@@ -52,7 +52,7 @@ module "codebuild_action" {
 }
 
 module "lambda_action" {
-  source = "github.com:jevjay/terrabits-lambda"
+  source = "github.com/jevjay/terrabits-lambda"
 
   for_each = try({ for a in local.actions_config : "${a.pipeline_name}-${a.stage_name}-${a.name}" => a if a.category == "Invoke" }, {})
 
