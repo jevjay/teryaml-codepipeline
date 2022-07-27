@@ -1,6 +1,6 @@
-![Terrabits logo](./img/terrabits-logo.png)
+![tbits logo](./img/tbits-logo.png)
 
-# terraforest-codepipeline
+# tbits-codepipeline
 
 Terraform based configuration for AWS Codepipeline based CI/CD stack
 
@@ -10,7 +10,7 @@ Create a simple Codepipeline job integrated with AWS CodeCommit as a source
 
 ```hcl
 module "pipelines" {
-  source  = "github.com/jevjay/terraforest-codepipeline"
+  source  = "github.com/jevjay/tbits-codepipeline"
 
   config = "path/to/configuration"
   
