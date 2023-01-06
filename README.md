@@ -1,6 +1,6 @@
-![tbits logo](./img/tbits-logo.png)
+![teryaml logo](./img/tbits-logo.png)
 
-# tbits-codepipeline
+# teryaml-codepipeline
 
 Terraform based configuration for AWS Codepipeline based CI/CD stack
 
